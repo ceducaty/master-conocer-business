@@ -1,0 +1,6 @@
+{
+  "name": "MASTER CONOCER BUSINESS",
+  "description": "Metodología de implementación empresarial asistida por inteligencia artificial de CEDUCATY para desarrollar un proyecto como Evaluador Independiente o Centro de Evaluación dentro del Sistema SEP-CONOCER.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
