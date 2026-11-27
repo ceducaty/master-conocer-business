@@ -5,11 +5,9 @@ export type LegalModalType = 'about' | 'contact' | 'privacy' | 'terms';
 
 interface FooterProps {
   onOpenLegalModal: (type: LegalModalType) => void;
-  onOpenAdminPreview: () => void;
-  leadsCount: number;
 }
 
-export function Footer({ onOpenLegalModal, onOpenAdminPreview, leadsCount }: FooterProps) {
+export function Footer({ onOpenLegalModal }: FooterProps) {
   return (
     <footer className="border-t border-[#1B2E2A]/12 bg-white py-12 text-[#1B2E2A]">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -76,7 +74,7 @@ export function Footer({ onOpenLegalModal, onOpenAdminPreview, leadsCount }: Foo
             </ul>
           </div>
 
-          {/* External Ecosystem Links & Admin Architecture Preview */}
+          {/* External Ecosystem Links */}
           <div className="md:col-span-4">
             <h3 className="text-xs font-bold tracking-wider text-[#1B2E2A] uppercase">
               Ecosistema CEDUCATY
@@ -103,15 +101,6 @@ export function Footer({ onOpenLegalModal, onOpenAdminPreview, leadsCount }: Foo
                   <span>ceducaty.com</span>
                   <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
                 </a>
-              </li>
-              <li className="pt-2">
-                <button
-                  type="button"
-                  onClick={onOpenAdminPreview}
-                  className="cursor-pointer text-xs font-semibold text-[#1B2E2A]/70 underline decoration-[#1B2E2A]/30 underline-offset-4 hover:text-[#1B2E2A]"
-                >
-                  Arquitectura de administración de prospectos ({leadsCount})
-                </button>
               </li>
             </ul>
           </div>

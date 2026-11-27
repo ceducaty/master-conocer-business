@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
-import { AdminPreviewDrawer } from './components/AdminPreviewDrawer';
+import { useEffect, useState } from 'react';
+import { AdminPage } from './components/AdminPage';
 import { AiAndChecklist } from './components/AiAndChecklist';
 import { AudienceAndSolutions } from './components/AudienceAndSolutions';
 import { DiagnosticFormSection } from './components/DiagnosticFormSection';
@@ -15,15 +15,19 @@ import { LegalModal } from './components/LegalModal';
 import { MethodologyAndModules } from './components/MethodologyAndModules';
 import { Navbar } from './components/Navbar';
 import { RoutesAndStandards } from './components/RoutesAndStandards';
-import { getStoredLeads, updateLocalLeadStatus } from './lib/leadService';
 import type {
   ExperienceLevelOption,
   LeadRecord,
-  LeadStatus,
   ProjectTypeOption,
 } from './types/lead';
 
+function isAdminPath(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.location.pathname.replace(/\/+$/, '') === '/admin';
+}
+
 export default function App() {
+  const [isAdminRoute, setIsAdminRoute] = useState<boolean>(() => isAdminPath());
   const [presetProjectType, setPresetProjectType] = useState<ProjectTypeOption | undefined>(
     undefined
   );
@@ -31,8 +35,38 @@ export default function App() {
     ExperienceLevelOption | undefined
   >(undefined);
   const [legalModal, setLegalModal] = useState<LegalModalType | null>(null);
-  const [adminOpen, setAdminOpen] = useState(false);
-  const [leads, setLeads] = useState<LeadRecord[]>(() => getStoredLeads());
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setIsAdminRoute(isAdminPath());
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  useEffect(() => {
+    const robotsMeta = document.querySelector('meta[name="robots"]');
+    if (isAdminRoute) {
+      document.title = 'Administración | MASTER CONOCER BUSINESS – CEDUCATY';
+      if (robotsMeta) {
+        robotsMeta.setAttribute('content', 'noindex, nofollow');
+      } else {
+        const meta = document.createElement('meta');
+        meta.name = 'robots';
+        meta.content = 'noindex, nofollow';
+        document.head.appendChild(meta);
+      }
+    } else {
+      document.title = 'MASTER CONOCER BUSINESS | CEDUCATY – Proyecto Empresarial CONOCER';
+      if (robotsMeta) {
+        robotsMeta.setAttribute('content', 'index, follow');
+      }
+    }
+  }, [isAdminRoute]);
+
+  if (isAdminRoute) {
+    return <AdminPage />;
+  }
 
   const scrollToSection = (sectionId: string) => {
     const el = document.getElementById(sectionId);
@@ -54,12 +88,7 @@ export default function App() {
   };
 
   const handleLeadSubmitted = (_newLead: LeadRecord) => {
-    setLeads(getStoredLeads());
-  };
-
-  const handleUpdateLeadStatus = (id: string, status: LeadStatus) => {
-    const updated = updateLocalLeadStatus(id, status);
-    setLeads(updated);
+    // El envío queda gestionado en DiagnosticFormSection y leadService
   };
 
   return (
@@ -95,23 +124,12 @@ export default function App() {
         <FaqAndFinalCta onGoToDiagnostic={() => scrollToSection('diagnostico')} />
       </main>
 
-      <Footer
-        onOpenLegalModal={setLegalModal}
-        onOpenAdminPreview={() => setAdminOpen(true)}
-        leadsCount={leads.length}
-      />
+      <Footer onOpenLegalModal={setLegalModal} />
 
       <LegalModal
         type={legalModal}
         onClose={() => setLegalModal(null)}
         onGoToDiagnostic={() => scrollToSection('diagnostico')}
-      />
-
-      <AdminPreviewDrawer
-        open={adminOpen}
-        leads={leads}
-        onClose={() => setAdminOpen(false)}
-        onUpdateStatus={handleUpdateLeadStatus}
       />
     </div>
   );

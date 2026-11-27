@@ -49,6 +49,7 @@ export type LeadStatus =
   | 'En revisión'
   | 'Contactado'
   | 'En seguimiento'
+  | 'Cerrado'
   | 'Descartado';
 
 export interface DiagnosticFormInput {
