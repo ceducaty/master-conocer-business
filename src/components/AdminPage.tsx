@@ -307,6 +307,7 @@ export function AdminPage() {
   }
 
   // Vista autenticada: Panel de administración de leads reales de Supabase
+  const hasAdminRole = session.user.app_metadata?.role === 'admin';
   const highPriorityCount = leads.filter((l) =>
     matchesPriorityFilter(l.commercial_priority, 'muy_alta') ||
     matchesPriorityFilter(l.commercial_priority, 'alta')
@@ -479,13 +480,34 @@ export function AdminPage() {
               Cargando leads desde Supabase...
             </div>
           ) : leads.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-[#1B2E2A]/20 bg-white p-10 text-center">
-              <p className="text-base font-bold text-[#1B2E2A]">No hay leads registrados todavía</p>
-              <p className="mt-1 text-sm text-[#1B2E2A]/70">
-                Cuando un visitante envíe el formulario de diagnóstico en la landing, aparecerá aquí
-                ordenado del más reciente al más antiguo.
-              </p>
-            </div>
+            !hasAdminRole && !leadsError ? (
+              <div
+                role="alert"
+                className="rounded-xl border border-[#A6192E]/35 bg-white p-8 text-center"
+              >
+                <p className="text-base font-bold text-[#A6192E]">
+                  Tu cuenta está autenticada, pero no tiene permisos de lectura de administrador
+                </p>
+                <p className="mx-auto mt-2 max-w-2xl text-sm text-[#1B2E2A]/80">
+                  Las políticas RLS de Supabase requieren que el usuario tenga{' '}
+                  <code className="rounded bg-[#F6F8F7] px-1.5 py-0.5 font-mono text-xs">
+                    app_metadata.role = &quot;admin&quot;
+                  </code>
+                  . Sin ese rol, Supabase devuelve 0 registros. Asigna el rol en Supabase y vuelve a
+                  iniciar sesión.
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-[#1B2E2A]/20 bg-white p-10 text-center">
+                <p className="text-base font-bold text-[#1B2E2A]">
+                  No hay leads registrados todavía
+                </p>
+                <p className="mt-1 text-sm text-[#1B2E2A]/70">
+                  Cuando un visitante envíe el formulario de diagnóstico en la landing, aparecerá
+                  aquí ordenado del más reciente al más antiguo.
+                </p>
+              </div>
+            )
           ) : filteredLeads.length === 0 ? (
             <div className="rounded-xl border border-dashed border-[#1B2E2A]/20 bg-white p-10 text-center">
               <p className="text-base font-bold text-[#1B2E2A]">

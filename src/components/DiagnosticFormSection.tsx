@@ -78,9 +78,10 @@ export function DiagnosticFormSection({
     const result = await submitDiagnosticLead(form);
     setIsSubmitting(false);
 
-    if (!result.ok || !result.lead) {
+    if (!result.ok || result.mode !== 'supabase' || !result.lead) {
       setSubmitError(
-        result.errorMessage || 'Ocurrió un problema al enviar tu diagnóstico. Intenta de nuevo.'
+        result.errorMessage ||
+          'No fue posible guardar tu diagnóstico en el servidor. Verifica tu conexión e intenta de nuevo.'
       );
       return;
     }

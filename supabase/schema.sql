@@ -67,7 +67,7 @@ create table if not exists public.leads (
     end
   ) stored,
   status text not null default 'Nuevo' check (
-    status in ('Nuevo', 'En revisión', 'Contactado', 'En seguimiento', 'Descartado')
+    status in ('Nuevo', 'En revisión', 'Contactado', 'En seguimiento', 'Cerrado', 'Descartado')
   ),
   created_at timestamptz not null default now()
 );
@@ -82,9 +82,9 @@ create index if not exists idx_leads_status on public.leads (status);
 -- 2. Seguridad: Row Level Security (RLS)
 alter table public.leads enable row level security;
 
--- Revocar acceso público directo de lectura, actualización y borrado
+-- Revocar acceso público directo de lectura, actualización y borrado; permitir inserción controlada
 revoke all on table public.leads from anon;
-grant insert on table public.leads to anon;
+grant insert on table public.leads to anon, authenticated;
 
 -- Política de inserción pública controlada (sin lectura pública)
 drop policy if exists "public_insert_diagnostic_leads" on public.leads;
@@ -97,8 +97,7 @@ create policy "public_insert_diagnostic_leads"
     and status = 'Nuevo'
   );
 
--- Política de lectura/gestión exclusiva para administradores autenticados
--- En Fase 4, restringir mediante claim de rol (ej. auth.jwt() ->> 'role' = 'admin')
+-- Política de lectura/gestión exclusiva para administradores autenticados con rol 'admin'
 drop policy if exists "admin_read_leads" on public.leads;
 create policy "admin_read_leads"
   on public.leads
@@ -113,3 +112,8 @@ create policy "admin_update_leads"
   to authenticated
   using (coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'admin')
   with check (coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'admin');
+
+-- 3. Asignación de rol administrador en Supabase Auth (ejecutar en SQL Editor para cada usuario admin):
+-- update auth.users
+-- set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role": "admin"}'::jsonb
+-- where email = 'ceducaty@gmail.com';

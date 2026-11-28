@@ -6,6 +6,7 @@ import type {
   LeadRecord,
   LeadStatus,
 } from '../types/lead';
+import { isSupabaseConfigured, supabase } from './supabaseClient';
 
 const LOCAL_LEADS_STORAGE_KEY = 'mcb_diagnostic_leads_v1';
 const LAST_SUBMIT_TS_KEY = 'mcb_last_submit_ts';
@@ -172,7 +173,7 @@ export function updateLocalLeadStatus(id: string, status: LeadStatus): LeadRecor
 
 export interface SubmitDiagnosticResult {
   ok: boolean;
-  mode: 'supabase' | 'local-preview';
+  mode: 'supabase' | 'error';
   lead?: LeadRecord;
   errorMessage?: string;
 }
@@ -183,8 +184,17 @@ export async function submitDiagnosticLead(
   if (!checkClientRateLimit()) {
     return {
       ok: false,
-      mode: 'local-preview',
+      mode: 'error',
       errorMessage: 'Espera unos segundos antes de enviar una nueva solicitud.',
+    };
+  }
+
+  if (!isSupabaseConfigured || !supabase) {
+    return {
+      ok: false,
+      mode: 'error',
+      errorMessage:
+        'El servicio de registro no está disponible en este momento (faltan variables de configuración de Supabase).',
     };
   }
 
@@ -211,62 +221,45 @@ export async function submitDiagnosticLead(
     created_at: nowIso,
   };
 
-  // Fase 4 ready: Si existen variables públicas de Supabase, inserta vía REST API con anon key (nunca service_role)
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+  try {
+    // Inserción real en public.leads sin .select() para respetar RLS (anon no tiene SELECT)
+    const { error } = await supabase.from('leads').insert([
+      {
+        full_name: newLead.full_name,
+        email: newLead.email,
+        whatsapp: newLead.whatsapp,
+        project_type: newLead.project_type,
+        development_timeline: newLead.development_timeline,
+        experience_level: newLead.experience_level,
+        estimated_budget: newLead.estimated_budget,
+        privacy_accepted: true,
+        privacy_accepted_at: newLead.privacy_accepted_at,
+        marketing_consent: newLead.marketing_consent,
+        marketing_consent_at: newLead.marketing_consent_at,
+        acquisition_source: newLead.acquisition_source,
+        status: 'Nuevo',
+      },
+    ]);
 
-  if (supabaseUrl && supabaseAnonKey) {
-    try {
-      const response = await fetch(`${supabaseUrl.replace(/\/$/, '')}/rest/v1/leads`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: supabaseAnonKey,
-          Authorization: `Bearer ${supabaseAnonKey}`,
-          Prefer: 'return=minimal',
-        },
-        body: JSON.stringify({
-          full_name: newLead.full_name,
-          email: newLead.email,
-          whatsapp: newLead.whatsapp,
-          project_type: newLead.project_type,
-          development_timeline: newLead.development_timeline,
-          experience_level: newLead.experience_level,
-          estimated_budget: newLead.estimated_budget,
-          privacy_accepted: newLead.privacy_accepted,
-          privacy_accepted_at: newLead.privacy_accepted_at,
-          marketing_consent: newLead.marketing_consent,
-          marketing_consent_at: newLead.marketing_consent_at,
-          acquisition_source: newLead.acquisition_source,
-          status: 'Nuevo',
-        }),
-      });
-
-      if (!response.ok) {
-        return {
-          ok: false,
-          mode: 'supabase',
-          errorMessage: 'No fue posible registrar tu diagnóstico en este momento. Inténtalo de nuevo.',
-        };
-      }
-
-      markClientSubmitTimestamp();
-      saveLocalLead(newLead);
-      return { ok: true, mode: 'supabase', lead: newLead };
-    } catch {
+    if (error) {
       return {
         ok: false,
-        mode: 'supabase',
-        errorMessage: 'Error de conexión al enviar tu diagnóstico. Verifica tu red e intenta nuevamente.',
+        mode: 'error',
+        errorMessage:
+          'No fue posible registrar tu diagnóstico en la base de datos. Inténtalo nuevamente en unos momentos.',
       };
     }
-  }
 
-  // Fases 1-3: Almacenamiento local de demostración para validar flujo completo en frontend sin crear proyecto externo
-  await new Promise((resolve) => setTimeout(resolve, 450));
-  markClientSubmitTimestamp();
-  saveLocalLead(newLead);
-  return { ok: true, mode: 'local-preview', lead: newLead };
+    markClientSubmitTimestamp();
+    return { ok: true, mode: 'supabase', lead: newLead };
+  } catch {
+    return {
+      ok: false,
+      mode: 'error',
+      errorMessage:
+        'Error de conexión al enviar tu diagnóstico. Verifica tu red e intenta nuevamente.',
+    };
+  }
 }
 
 export function exportConsentedLeadsToCsv(leads: LeadRecord[]): void {
